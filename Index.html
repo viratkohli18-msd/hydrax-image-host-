@@ -1,0 +1,1195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SILENT NETWORK — Cyberpunk Edition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:#03030a;
+  color:#e0e0ff;
+  font-family:'Rajdhani',sans-serif;
+  overflow-x:hidden;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* Backgrounds */
+#bgCanvas{position:fixed;inset:0;z-index:0}
+#particleCanvas{position:fixed;inset:0;z-index:1;pointer-events:none}
+#scanlines{
+  position:fixed;inset:0;z-index:2;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,255,0.015) 2px,rgba(0,255,255,0.015) 4px);
+}
+#vignette{
+  position:fixed;inset:0;z-index:3;pointer-events:none;
+  background:radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%);
+}
+
+/* ========== LOADER ========== */
+#loader{
+  position:fixed;inset:0;z-index:100;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:#03030a;
+  transition:opacity 1s ease, visibility 1s ease;
+}
+#loader.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.loader-ring{
+  width:90px;height:90px;
+  border:3px solid rgba(0,240,255,0.08);
+  border-top-color:#00f0ff;
+  border-right-color:rgba(0,240,255,0.3);
+  border-radius:50%;
+  animation:spin 1.2s linear infinite;
+  box-shadow:0 0 30px rgba(0,240,255,0.15), inset 0 0 20px rgba(0,240,255,0.05);
+  position:relative;
+}
+.loader-ring::after{
+  content:'';position:absolute;inset:-8px;
+  border:1px solid rgba(255,0,255,0.1);
+  border-radius:50%;
+  animation:spin 2s linear infinite reverse;
+}
+.loader-text{
+  margin-top:28px;
+  font-family:'Orbitron',monospace;
+  font-size:13px;letter-spacing:6px;
+  color:#00f0ff;
+  text-shadow:0 0 15px rgba(0,240,255,0.4);
+}
+.loader-bar-wrap{
+  margin-top:16px;width:240px;height:3px;
+  background:rgba(0,240,255,0.08);
+  border-radius:3px;overflow:hidden;
+  position:relative;
+}
+.loader-bar{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,#00f0ff,#ff00ff,#00f0ff);
+  background-size:200% 100%;
+  animation:gradientMove 2s linear infinite;
+  transition:width 0.4s cubic-bezier(0.4,0,0.2,1);
+  box-shadow:0 0 10px rgba(0,240,255,0.4);
+}
+
+/* ========== TELEGRAM FORCE JOIN MODAL ========== */
+#tgModal{
+  position:fixed;inset:0;z-index:90;
+  display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.92);
+  backdrop-filter:blur(25px) saturate(1.3);
+  opacity:0;transition:opacity 0.5s ease;
+}
+#tgModal.active{display:flex;opacity:1}
+.tg-box{
+  background:linear-gradient(145deg, rgba(8,8,25,0.97), rgba(5,5,18,0.99));
+  border:1px solid rgba(0,240,255,0.2);
+  border-radius:28px;
+  padding:48px 36px;max-width:440px;width:92%;
+  text-align:center;
+  box-shadow:0 0 80px rgba(0,240,255,0.1), 0 30px 100px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.03);
+  position:relative;overflow:hidden;
+  transform:scale(0.9);
+  transition:transform 0.5s cubic-bezier(0.34,1.56,0.64,1);
+}
+#tgModal.active .tg-box{transform:scale(1)}
+.tg-box::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,240,255,0.5),transparent);
+}
+.tg-icon{
+  font-size:64px;margin-bottom:16px;
+  display:block;
+  animation:float 3s ease-in-out infinite;
+  filter:drop-shadow(0 0 20px rgba(0,136,204,0.4));
+}
+.tg-title{
+  font-family:'Orbitron',sans-serif;
+  font-size:24px;font-weight:800;
+  color:#00f0ff;
+  text-shadow:0 0 20px rgba(0,240,255,0.3);
+  margin-bottom:10px;letter-spacing:2px;
+}
+.tg-sub{
+  color:#556677;font-size:14px;margin-bottom:8px;letter-spacing:1px;
+  line-height:1.6;
+}
+.tg-warning{
+  color:#ff3366;font-size:12px;margin-bottom:28px;
+  font-family:'Share Tech Mono',monospace;
+  background:rgba(255,51,102,0.08);
+  padding:10px 16px;border-radius:10px;
+  border:1px solid rgba(255,51,102,0.15);
+}
+.tg-btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  padding:18px 40px;
+  background:linear-gradient(135deg,#0088cc,#0066aa);
+  border:none;border-radius:16px;
+  color:#fff;font-family:'Orbitron',sans-serif;
+  font-weight:700;font-size:14px;cursor:pointer;
+  transition:all 0.4s ease;letter-spacing:2px;
+  text-transform:uppercase;
+  text-decoration:none;
+  position:relative;overflow:hidden;
+  box-shadow:0 8px 30px rgba(0,136,204,0.3);
+}
+.tg-btn::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);
+  transform:translateX(-100%);
+  transition:transform 0.6s ease;
+}
+.tg-btn:hover::before{transform:translateX(100%)}
+.tg-btn:hover{
+  transform:translateY(-3px);
+  box-shadow:0 15px 50px rgba(0,136,204,0.4);
+}
+.tg-btn:active{transform:translateY(-1px) scale(0.97)}
+.tg-check-btn{
+  margin-top:16px;
+  padding:14px 32px;
+  background:linear-gradient(135deg,rgba(0,255,100,0.15),rgba(0,255,100,0.05));
+  border:1.5px solid rgba(0,255,100,0.3);
+  border-radius:14px;
+  color:#00ff64;font-family:'Orbitron',sans-serif;
+  font-weight:700;font-size:13px;cursor:pointer;
+  transition:all 0.3s ease;letter-spacing:2px;
+}
+.tg-check-btn:hover{
+  background:rgba(0,255,100,0.2);
+  box-shadow:0 8px 25px rgba(0,255,100,0.15);
+}
+.tg-error{
+  margin-top:14px;color:#ff3366;font-size:13px;
+  opacity:0;transition:opacity 0.3s ease;
+  font-family:'Share Tech Mono',monospace;
+}
+.tg-error.show{opacity:1}
+
+/* ========== PASSWORD MODAL ========== */
+#passModal{
+  position:fixed;inset:0;z-index:50;
+  display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.88);
+  backdrop-filter:blur(20px) saturate(1.2);
+  opacity:0;transition:opacity 0.4s ease;
+}
+#passModal.active{display:flex;opacity:1}
+.pass-box{
+  background:linear-gradient(145deg, rgba(8,8,25,0.95), rgba(5,5,18,0.98));
+  border:1px solid rgba(0,240,255,0.2);
+  border-radius:24px;
+  padding:48px 40px;max-width:420px;width:92%;
+  text-align:center;
+  box-shadow:0 0 60px rgba(0,240,255,0.08), 0 25px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.03);
+  position:relative;overflow:hidden;
+  transform:scale(0.95);
+  transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1), border-color 0.3s, box-shadow 0.3s;
+}
+#passModal.active .pass-box{transform:scale(1)}
+.pass-box::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,240,255,0.4),transparent);
+}
+.pass-icon{
+  font-size:52px;margin-bottom:20px;
+  display:block;
+  animation:float 3s ease-in-out infinite;
+  filter:drop-shadow(0 0 15px rgba(0,240,255,0.3));
+}
+.pass-title{
+  font-family:'Orbitron',sans-serif;
+  font-size:22px;font-weight:700;
+  color:#00f0ff;
+  text-shadow:0 0 20px rgba(0,240,255,0.3);
+  margin-bottom:8px;letter-spacing:2px;
+}
+.pass-sub{
+  color:#556677;font-size:13px;margin-bottom:32px;letter-spacing:1px;
+}
+.pass-input-wrap{position:relative;margin-bottom:20px;}
+.pass-input{
+  width:100%;padding:16px 20px;
+  background:rgba(0,240,255,0.04);
+  border:1.5px solid rgba(0,240,255,0.15);
+  border-radius:14px;
+  color:#fff;font-size:15px;font-family:'Rajdhani',sans-serif;
+  outline:none;transition:all 0.3s ease;
+  letter-spacing:2px;
+}
+.pass-input::placeholder{color:#445566;letter-spacing:1px}
+.pass-input:focus{
+  border-color:#00f0ff;
+  box-shadow:0 0 25px rgba(0,240,255,0.15), inset 0 0 20px rgba(0,240,255,0.03);
+  background:rgba(0,240,255,0.06);
+}
+.pass-btn{
+  width:100%;padding:16px;
+  background:linear-gradient(135deg,#00f0ff,#0080ff);
+  border:none;border-radius:14px;
+  color:#000;font-family:'Orbitron',sans-serif;
+  font-weight:700;font-size:14px;cursor:pointer;
+  transition:all 0.3s ease;letter-spacing:3px;
+  text-transform:uppercase;
+  position:relative;overflow:hidden;
+}
+.pass-btn::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);
+  transform:translateX(-100%);
+  transition:transform 0.5s ease;
+}
+.pass-btn:hover::before{transform:translateX(100%)}
+.pass-btn:hover{transform:translateY(-2px);box-shadow:0 10px 40px rgba(0,240,255,0.3);}
+.pass-btn:active{transform:translateY(0) scale(0.98)}
+.pass-error{
+  margin-top:14px;color:#ff3366;font-size:13px;
+  opacity:0;transition:opacity 0.3s ease;
+  font-family:'Share Tech Mono',monospace;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.pass-error.show{opacity:1}
+
+/* ========== MAIN CONTENT ========== */
+#mainContent{
+  position:relative;z-index:10;
+  min-height:100vh;
+  padding:20px;
+  opacity:0;
+  transition:opacity 1.2s ease;
+}
+#mainContent.visible{opacity:1}
+.content-wrap{max-width:840px;margin:0 auto}
+
+/* Header */
+.header{
+  text-align:center;padding:50px 20px 35px;
+  position:relative;
+}
+.logo-wrap{
+  display:inline-block;position:relative;
+}
+.logo-glow{
+  position:absolute;inset:-15px;
+  background:linear-gradient(135deg,rgba(0,240,255,0.15),rgba(255,0,255,0.15));
+  border-radius:50%;filter:blur(25px);
+  animation:pulseGlow 3s ease-in-out infinite;
+}
+.logo{
+  position:relative;width:100px;height:100px;
+  background:linear-gradient(145deg,#0a0a25,#151540);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  border:2px solid rgba(0,240,255,0.25);
+  box-shadow:0 0 40px rgba(0,240,255,0.15), inset 0 0 30px rgba(0,240,255,0.05);
+  font-size:44px;
+  animation:float 4s ease-in-out infinite;
+}
+.main-title{
+  margin:24px 0 10px 0;
+  font-family:'Orbitron',sans-serif;
+  font-size:clamp(32px,7vw,56px);
+  font-weight:900;
+  background:linear-gradient(135deg,#00f0ff,#ff00ff,#00f0ff,#ff00ff);
+  background-size:300% 300%;
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  animation:gradientShift 4s ease infinite;
+  letter-spacing:3px;
+  line-height:1.1;
+  filter:drop-shadow(0 0 20px rgba(0,240,255,0.2));
+}
+.subtitle{
+  color:#556677;font-size:14px;letter-spacing:8px;
+  text-transform:uppercase;font-weight:500;
+}
+.badge-row{
+  margin-top:20px;display:flex;gap:10px;
+  justify-content:center;flex-wrap:wrap;
+}
+.badge{
+  padding:6px 16px;
+  border-radius:30px;font-size:11px;
+  font-weight:600;letter-spacing:1.5px;
+  backdrop-filter:blur(10px);
+  border:1px solid;
+  font-family:'Orbitron',sans-serif;
+}
+.badge-cyan{background:rgba(0,240,255,0.06);border-color:rgba(0,240,255,0.2);color:#00f0ff}
+.badge-magenta{background:rgba(255,0,255,0.06);border-color:rgba(255,0,255,0.2);color:#ff00ff}
+.badge-green{background:rgba(0,255,100,0.06);border-color:rgba(0,255,100,0.2);color:#00ff64}
+
+/* Config Cards */
+.config-card{
+  background:linear-gradient(145deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01));
+  border-radius:24px;padding:32px;margin-bottom:24px;
+  backdrop-filter:blur(30px) saturate(1.3);
+  position:relative;overflow:hidden;
+  transition:all 0.5s cubic-bezier(0.4,0,0.2,1);
+  border:1px solid;
+}
+.config-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  opacity:0.5;
+}
+.config-card:hover{transform:translateY(-6px);}
+.card-tag{
+  position:absolute;top:0;right:0;
+  padding:10px 20px;
+  border-bottom-left-radius:20px;
+  font-family:'Orbitron',sans-serif;
+  font-size:11px;font-weight:700;letter-spacing:2px;
+}
+.card-header{
+  display:flex;align-items:center;gap:16px;margin-bottom:20px;
+}
+.card-icon{
+  width:52px;height:52px;border-radius:16px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;
+  border:1px solid;
+  flex-shrink:0;
+}
+.card-title{margin:0;font-size:20px;color:#fff;font-weight:700;letter-spacing:0.5px}
+.card-desc{margin:4px 0 0 0;font-size:13px;color:#556677}
+
+.card-vless{border-color:rgba(0,240,255,0.12)}
+.card-vless::before{background:linear-gradient(90deg,transparent,rgba(0,240,255,0.3),transparent)}
+.card-vless:hover{border-color:rgba(0,240,255,0.4);box-shadow:0 25px 70px rgba(0,240,255,0.1)}
+.card-vless .card-tag{background:linear-gradient(135deg,rgba(0,240,255,0.15),rgba(0,240,255,0.03));color:#00f0ff}
+.card-vless .card-icon{background:linear-gradient(135deg,rgba(0,240,255,0.12),rgba(0,240,255,0.03));border-color:rgba(0,240,255,0.2)}
+
+.card-vmess{border-color:rgba(255,0,255,0.12)}
+.card-vmess::before{background:linear-gradient(90deg,transparent,rgba(255,0,255,0.3),transparent)}
+.card-vmess:hover{border-color:rgba(255,0,255,0.4);box-shadow:0 25px 70px rgba(255,0,255,0.1)}
+.card-vmess .card-tag{background:linear-gradient(135deg,rgba(255,0,255,0.15),rgba(255,0,255,0.03));color:#ff00ff}
+.card-vmess .card-icon{background:linear-gradient(135deg,rgba(255,0,255,0.12),rgba(255,0,255,0.03));border-color:rgba(255,0,255,0.2)}
+
+.card-trojan{border-color:rgba(255,200,0,0.12)}
+.card-trojan::before{background:linear-gradient(90deg,transparent,rgba(255,200,0,0.3),transparent)}
+.card-trojan:hover{border-color:rgba(255,200,0,0.4);box-shadow:0 25px 70px rgba(255,200,0,0.1)}
+.card-trojan .card-tag{background:linear-gradient(135deg,rgba(255,200,0,0.15),rgba(255,200,0,0.03));color:#ffc800}
+.card-trojan .card-icon{background:linear-gradient(135deg,rgba(255,200,0,0.12),rgba(255,200,0,0.03));border-color:rgba(255,200,0,0.2)}
+
+.card-ss{border-color:rgba(0,255,100,0.12)}
+.card-ss::before{background:linear-gradient(90deg,transparent,rgba(0,255,100,0.3),transparent)}
+.card-ss:hover{border-color:rgba(0,255,100,0.4);box-shadow:0 25px 70px rgba(0,255,100,0.1)}
+.card-ss .card-tag{background:linear-gradient(135deg,rgba(0,255,100,0.15),rgba(0,255,100,0.03));color:#00ff64}
+.card-ss .card-icon{background:linear-gradient(135deg,rgba(0,255,100,0.12),rgba(0,255,100,0.03));border-color:rgba(0,255,100,0.2)}
+
+.config-box{
+  background:rgba(0,0,0,0.45);
+  border-radius:16px;padding:18px;
+  font-family:'Share Tech Mono',monospace;
+  font-size:12px;
+  word-break:break-all;line-height:1.7;
+  position:relative;overflow:hidden;
+  border:1px solid;
+  max-height:220px;overflow-y:auto;
+}
+.config-text{filter:blur(5px);user-select:none;transition:filter 0.6s ease;}
+.config-text.visible{filter:blur(0px);user-select:text;}
+.config-overlay{
+  position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.7);
+  backdrop-filter:blur(3px);
+  border-radius:16px;
+  transition:opacity 0.4s ease;
+}
+.config-overlay.hidden{opacity:0;pointer-events:none}
+.config-overlay span{color:#556677;font-size:13px;display:flex;align-items:center;gap:8px;}
+
+.box-vless{border-color:rgba(0,240,255,0.08);color:#00f0ff}
+.box-vmess{border-color:rgba(255,0,255,0.08);color:#ff00ff}
+.box-trojan{border-color:rgba(255,200,0,0.08);color:#ffc800}
+.box-ss{border-color:rgba(0,255,100,0.08);color:#00ff64}
+
+.btn-row{display:flex;gap:12px;margin-top:18px;flex-wrap:wrap}
+.btn{
+  flex:1;min-width:130px;padding:14px;
+  border-radius:14px;font-size:13px;
+  font-weight:700;cursor:pointer;
+  transition:all 0.35s cubic-bezier(0.4,0,0.2,1);
+  font-family:'Orbitron',sans-serif;
+  letter-spacing:1px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  border:1.5px solid;
+  position:relative;overflow:hidden;
+}
+.btn::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent);
+  transform:translateX(-100%);
+  transition:transform 0.6s ease;
+}
+.btn:hover::before{transform:translateX(100%)}
+.btn:hover{transform:translateY(-3px)}
+.btn:active{transform:translateY(-1px) scale(0.97)}
+
+.btn-copy-cyan{background:rgba(0,240,255,0.06);border-color:rgba(0,240,255,0.25);color:#00f0ff}
+.btn-copy-cyan:hover{background:rgba(0,240,255,0.12);box-shadow:0 8px 30px rgba(0,240,255,0.15)}
+.btn-show-magenta{background:rgba(255,0,255,0.06);border-color:rgba(255,0,255,0.25);color:#ff00ff}
+.btn-show-magenta:hover{background:rgba(255,0,255,0.12);box-shadow:0 8px 30px rgba(255,0,255,0.15)}
+.btn-copy-magenta{background:rgba(255,0,255,0.06);border-color:rgba(255,0,255,0.25);color:#ff00ff}
+.btn-copy-magenta:hover{background:rgba(255,0,255,0.12);box-shadow:0 8px 30px rgba(255,0,255,0.15)}
+.btn-show-cyan{background:rgba(0,240,255,0.06);border-color:rgba(0,240,255,0.25);color:#00f0ff}
+.btn-show-cyan:hover{background:rgba(0,240,255,0.12);box-shadow:0 8px 30px rgba(0,240,255,0.15)}
+.btn-copy-gold{background:rgba(255,200,0,0.06);border-color:rgba(255,200,0,0.25);color:#ffc800}
+.btn-copy-gold:hover{background:rgba(255,200,0,0.12);box-shadow:0 8px 30px rgba(255,200,0,0.15)}
+.btn-show-green{background:rgba(0,255,100,0.06);border-color:rgba(0,255,100,0.25);color:#00ff64}
+.btn-show-green:hover{background:rgba(0,255,100,0.12);box-shadow:0 8px 30px rgba(0,255,100,0.15)}
+.btn-copy-green{background:rgba(0,255,100,0.06);border-color:rgba(0,255,100,0.25);color:#00ff64}
+.btn-copy-green:hover{background:rgba(0,255,100,0.12);box-shadow:0 8px 30px rgba(0,255,100,0.15)}
+.btn-show-magenta2{background:rgba(255,0,255,0.06);border-color:rgba(255,0,255,0.25);color:#ff00ff}
+.btn-show-magenta2:hover{background:rgba(255,0,255,0.12);box-shadow:0 8px 30px rgba(255,0,255,0.15)}
+
+/* Locked State */
+.locked-state{text-align:center;padding:80px 20px;}
+.locked-icon{font-size:90px;margin-bottom:24px;opacity:0.4;animation:float 5s ease-in-out infinite;}
+.locked-title{font-family:'Orbitron',sans-serif;font-size:26px;color:#445566;margin-bottom:12px;letter-spacing:2px;}
+.locked-desc{color:#334455;font-size:15px;margin-bottom:40px;letter-spacing:1px;}
+.btn-get-config{
+  padding:18px 56px;
+  background:linear-gradient(135deg,#00f0ff,#ff00ff);
+  background-size:200% 200%;
+  border:none;border-radius:16px;
+  color:#000;font-family:'Orbitron',sans-serif;
+  font-weight:800;font-size:15px;cursor:pointer;
+  transition:all 0.4s ease;letter-spacing:3px;
+  text-transform:uppercase;
+  position:relative;overflow:hidden;
+  animation:gradientShift 3s ease infinite;
+}
+.btn-get-config::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent);
+  transform:translateX(-100%);
+  transition:transform 0.6s ease;
+}
+.btn-get-config:hover::before{transform:translateX(100%)}
+.btn-get-config:hover{transform:translateY(-4px);box-shadow:0 15px 50px rgba(0,240,255,0.25), 0 15px 50px rgba(255,0,255,0.15);}
+.btn-get-config:active{transform:translateY(-1px) scale(0.97)}
+
+/* Action Buttons */
+.action-row{display:flex;gap:14px;margin:36px 0;flex-wrap:wrap;}
+.btn-telegram{
+  flex:1;min-width:220px;padding:18px;
+  background:linear-gradient(135deg,#0088cc,#0066aa);
+  border:none;border-radius:18px;
+  color:#fff;font-family:'Orbitron',sans-serif;
+  font-size:14px;font-weight:700;cursor:pointer;
+  transition:all 0.4s ease;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  letter-spacing:1px;
+  position:relative;overflow:hidden;
+}
+.btn-telegram::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);
+  transform:translateX(-100%);
+  transition:transform 0.6s ease;
+}
+.btn-telegram:hover::before{transform:translateX(100%)}
+.btn-telegram:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,136,204,0.3);}
+.btn-telegram:active{transform:translateY(-1px) scale(0.97)}
+
+.btn-getall{
+  flex:1;min-width:220px;padding:18px;
+  background:linear-gradient(135deg,#00f0ff,#0080ff);
+  border:none;border-radius:18px;
+  color:#000;font-family:'Orbitron',sans-serif;
+  font-size:14px;font-weight:700;cursor:pointer;
+  transition:all 0.4s ease;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  letter-spacing:1px;
+  position:relative;overflow:hidden;
+}
+.btn-getall::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent);
+  transform:translateX(-100%);
+  transition:transform 0.6s ease;
+}
+.btn-getall:hover::before{transform:translateX(100%)}
+.btn-getall:hover{transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,240,255,0.3);}
+.btn-getall:active{transform:translateY(-1px) scale(0.97)}
+
+/* Developer Credit */
+.dev-credit{
+  text-align:center;padding:20px 20px 40px;
+  position:relative;
+}
+.dev-credit::before{
+  content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:120px;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(0,240,255,0.3),transparent);
+}
+.dev-text{
+  font-family:'Orbitron',sans-serif;
+  font-size:11px;letter-spacing:3px;
+  color:#334455;
+  text-transform:uppercase;
+}
+.dev-name{
+  font-family:'Orbitron',sans-serif;
+  font-size:16px;font-weight:700;
+  color:#00f0ff;
+  text-shadow:0 0 15px rgba(0,240,255,0.3);
+  margin-top:8px;
+  letter-spacing:2px;
+}
+.dev-heart{
+  color:#ff3366;
+  animation:pulseGlow 2s ease-in-out infinite;
+  display:inline-block;
+}
+
+/* Footer */
+.footer{
+  text-align:center;padding:10px 20px 30px;
+  color:#334455;font-size:12px;letter-spacing:2px;
+  font-family:'Orbitron',sans-serif;
+}
+.footer p{margin:0 0 8px 0}
+
+/* Toast */
+#toast{
+  position:fixed;bottom:40px;left:50%;
+  transform:translateX(-50%) translateY(120px);
+  z-index:200;padding:16px 32px;
+  background:rgba(0,240,255,0.1);
+  border:1px solid rgba(0,240,255,0.25);
+  border-radius:16px;
+  color:#00f0ff;font-size:14px;font-weight:700;
+  backdrop-filter:blur(25px) saturate(1.5);
+  opacity:0;
+  transition:all 0.5s cubic-bezier(0.34,1.56,0.64,1);
+  pointer-events:none;
+  font-family:'Orbitron',sans-serif;
+  letter-spacing:1px;
+  box-shadow:0 10px 40px rgba(0,240,255,0.1);
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* Keyframes */
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulseGlow{0%,100%{opacity:0.4;transform:scale(1)}50%{opacity:1;transform:scale(1.15)}}
+@keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes gradientMove{0%{background-position:0% 0%}100%{background-position:200% 0%}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+@keyframes shake{0%,100%{transform:translateX(0)}10%,30%,50%,70%,90%{transform:translateX(-10px)}20%,40%,60%,80%{transform:translateX(10px)}}
+@keyframes unlockPulse{0%{box-shadow:0 0 20px rgba(0,255,100,0.2)}50%{box-shadow:0 0 60px rgba(0,255,100,0.5)}100%{box-shadow:0 0 20px rgba(0,255,100,0.2)}}
+
+.shake-anim{animation:shake 0.55s cubic-bezier(0.36,0.07,0.19,0.97) both}
+.unlock-anim{animation:unlockPulse 1.2s ease infinite}
+
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:rgba(0,0,0,0.3)}
+::-webkit-scrollbar-thumb{background:rgba(0,240,255,0.2);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(0,240,255,0.35)}
+::selection{background:rgba(0,240,255,0.25);color:#fff}
+
+@media(max-width:600px){
+  .pass-box,.tg-box{padding:36px 24px}
+  .config-card{padding:24px}
+  .card-header{gap:12px}
+  .card-icon{width:44px;height:44px;font-size:20px}
+  .card-title{font-size:17px}
+  .btn-row{gap:8px}
+  .btn{min-width:100px;padding:12px;font-size:12px}
+  .action-row{gap:10px}
+  .btn-telegram,.btn-getall{min-width:100%;padding:16px}
+  .main-title{font-size:28px}
+  .subtitle{font-size:11px;letter-spacing:4px}
+  .badge{font-size:10px;padding:5px 12px}
+  .loader-ring{width:70px;height:70px}
+  .tg-title{font-size:20px}
+}
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+<canvas id="particleCanvas"></canvas>
+<div id="scanlines"></div>
+<div id="vignette"></div>
+
+<!-- ========== LOADER ========== -->
+<div id="loader">
+  <div class="loader-ring"></div>
+  <div class="loader-text" id="loaderText">INITIALIZING...</div>
+  <div class="loader-bar-wrap">
+    <div class="loader-bar" id="loaderBar"></div>
+  </div>
+</div>
+
+<!-- ========== TELEGRAM FORCE JOIN MODAL ========== -->
+<div id="tgModal">
+  <div class="tg-box" id="tgBox">
+    <span class="tg-icon">✈️</span>
+    <h2 class="tg-title">JOIN REQUIRED</h2>
+    <p class="tg-sub">You must join our Telegram channel<br>to access SILENT NETWORK configs</p>
+    <p class="tg-warning">⚠️ Page will remain locked until you join</p>
+    <a id="tgJoinLink" href="https://t.me/your_telegram_channel" target="_blank" class="tg-btn">
+      <span style="font-size:20px">✈️</span> JOIN TELEGRAM
+    </a>
+    <br>
+    <button class="tg-check-btn" onclick="checkTelegramJoin()">
+      ✅ I HAVE JOINED — UNLOCK NOW
+    </button>
+    <p class="tg-error" id="tgError">❌ Please join the channel first</p>
+  </div>
+</div>
+
+<!-- ========== PASSWORD MODAL ========== -->
+<div id="passModal">
+  <div class="pass-box" id="passBox">
+    <span class="pass-icon">🔐</span>
+    <h2 class="pass-title">SECURE ACCESS</h2>
+    <p class="pass-sub">Enter the access key to unlock configurations</p>
+    <div class="pass-input-wrap">
+      <input id="passInput" type="password" class="pass-input" placeholder="Enter password..." autocomplete="off">
+    </div>
+    <button id="unlockBtn" class="pass-btn" onclick="checkPass()">UNLOCK</button>
+    <p class="pass-error" id="passError"><span>❌</span> Invalid access key</p>
+  </div>
+</div>
+
+<!-- ========== MAIN CONTENT ========== -->
+<div id="mainContent">
+  <div class="content-wrap">
+
+    <div class="header">
+      <div class="logo-wrap">
+        <div class="logo-glow"></div>
+        <div class="logo">🌌</div>
+      </div>
+      <h1 class="main-title">SILENT NETWORK</h1>
+      <p class="subtitle">Cyberpunk Edition &bull; Secure Proxy Hub</p>
+      <div class="badge-row">
+        <span class="badge badge-cyan">🔒 ENCRYPTED</span>
+        <span class="badge badge-magenta">⚡ HIGH SPEED</span>
+        <span class="badge badge-green">🌍 GLOBAL</span>
+      </div>
+    </div>
+
+    <div id="configCards" style="display:none">
+
+      <div class="config-card card-vless">
+        <div class="card-tag">VLESS</div>
+        <div class="card-header">
+          <div class="card-icon">⚡</div>
+          <div>
+            <h3 class="card-title">VLESS Protocol</h3>
+            <p class="card-desc">Ultra-fast lightweight proxy with XTLS support</p>
+          </div>
+        </div>
+        <div class="config-box box-vless" id="vlessBox">
+          <span class="config-text" id="vlessText">Loading...</span>
+          <div class="config-overlay" id="vlessOverlay"><span>🔒 Hidden — Click "Get Config"</span></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-copy-cyan" onclick="copyConfig('vless')">📋 Copy</button>
+          <button class="btn btn-show-magenta" onclick="toggleShow('vless')">
+            <span id="vlessEye">👁️</span> <span id="vlessShowText">Show</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="config-card card-vmess">
+        <div class="card-tag">VMESS</div>
+        <div class="card-header">
+          <div class="card-icon">🔮</div>
+          <div>
+            <h3 class="card-title">VMess Protocol</h3>
+            <p class="card-desc">Advanced encrypted tunnel with WebSocket transport</p>
+          </div>
+        </div>
+        <div class="config-box box-vmess" id="vmessBox">
+          <span class="config-text" id="vmessText">Loading...</span>
+          <div class="config-overlay" id="vmessOverlay"><span>🔒 Hidden — Click "Get Config"</span></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-copy-magenta" onclick="copyConfig('vmess')">📋 Copy</button>
+          <button class="btn btn-show-cyan" onclick="toggleShow('vmess')">
+            <span id="vmessEye">👁️</span> <span id="vmessShowText">Show</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="config-card card-trojan">
+        <div class="card-tag">TROJAN</div>
+        <div class="card-header">
+          <div class="card-icon">🛡️</div>
+          <div>
+            <h3 class="card-title">Trojan Protocol</h3>
+            <p class="card-desc">TLS-based stealth proxy mimicking HTTPS traffic</p>
+          </div>
+        </div>
+        <div class="config-box box-trojan" id="trojanBox">
+          <span class="config-text" id="trojanText">Loading...</span>
+          <div class="config-overlay" id="trojanOverlay"><span>🔒 Hidden — Click "Get Config"</span></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-copy-gold" onclick="copyConfig('trojan')">📋 Copy</button>
+          <button class="btn btn-show-green" onclick="toggleShow('trojan')">
+            <span id="trojanEye">👁️</span> <span id="trojanShowText">Show</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="config-card card-ss">
+        <div class="card-tag">SHADOWSOCKS</div>
+        <div class="card-header">
+          <div class="card-icon">🔑</div>
+          <div>
+            <h3 class="card-title">Shadowsocks</h3>
+            <p class="card-desc">SOCKS5 proxy with AEAD cipher encryption</p>
+          </div>
+        </div>
+        <div class="config-box box-ss" id="ssBox">
+          <span class="config-text" id="ssText">Loading...</span>
+          <div class="config-overlay" id="ssOverlay"><span>🔒 Hidden — Click "Get Config"</span></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-copy-green" onclick="copyConfig('ss')">📋 Copy</button>
+          <button class="btn btn-show-magenta2" onclick="toggleShow('ss')">
+            <span id="ssEye">👁️</span> <span id="ssShowText">Show</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn-telegram" onclick="window.open(TELEGRAM_LINK,'_blank')">
+          <span style="font-size:20px">✈️</span> Join Telegram
+        </button>
+        <button class="btn-getall" onclick="getAllConfigs()">
+          <span style="font-size:20px">🗄️</span> Get All Configs
+        </button>
+      </div>
+
+      <div class="footer">
+        <p>⚡ SILENT NETWORK &bull; Cyberpunk Edition</p>
+        <p>Built for speed. Designed for silence.</p>
+      </div>
+
+      <!-- Developer Credit -->
+      <div class="dev-credit">
+        <p class="dev-text">Developed with <span class="dev-heart">🖤</span> by</p>
+        <p class="dev-name">H̴Y̴D̴R̴A̴ ̴X̴ ̴S̴I̴L̴E̴N̴T̴ ̴O̴W̴N̴E̴R̴</p>
+      </div>
+    </div>
+
+    <div class="locked-state" id="lockedState">
+      <div class="locked-icon">🔒</div>
+      <h2 class="locked-title">Configurations Locked</h2>
+      <p class="locked-desc">Click "Get Config" to authenticate and unlock all protocols</p>
+      <button class="btn-get-config" onclick="openPassModal()">🗄️ GET CONFIG</button>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast">✅ Copied to clipboard!</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  SILENT NETWORK — Cyberpunk Edition
+//  API-powered + Telegram Force Join + Developer Credit
+// ═══════════════════════════════════════════════════════════════
+
+// ==================== 🔴 CONFIGURE THESE ====================
+const PAGES_URL = 'https://hydrax-image-host.pages.dev'; // ← Your Worker URL
+const TELEGRAM_LINK = 'https://t.me/SILENT_NETWORK_OPP'; // ← Your Telegram Channel
+const TG_CHANNEL_USERNAME = 'SILENT_NETWORK_OPP'; // ← Channel username without @
+const PASSWORD = 'silentbhaiop'; // ← Config unlock password
+// =============================================================
+
+let isUnlocked = false;
+let visibleConfigs = { vless:false, vmess:false, trojan:false, ss:false };
+let CONFIGS = {};
+
+// ==================== AUDIO ENGINE ====================
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function getAudio(){
+  if(!audioCtx) audioCtx = new AudioCtx();
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playClick(){
+  const ctx = getAudio();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.04);
+  gain.gain.setValueAtTime(0.06, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+  osc.start(); osc.stop(ctx.currentTime + 0.08);
+}
+function playError(){
+  const ctx = getAudio();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(180, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.35);
+  gain.gain.setValueAtTime(0.1, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+  osc.start(); osc.stop(ctx.currentTime + 0.35);
+}
+function playSuccess(){
+  const ctx = getAudio();
+  const notes = [523.25, 659.25, 783.99, 1046.50];
+  notes.forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.08, ctx.currentTime + i * 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.25);
+    osc.start(ctx.currentTime + i * 0.08);
+    osc.stop(ctx.currentTime + i * 0.08 + 0.25);
+  });
+}
+function playUnlock(){
+  const ctx = getAudio();
+  const notes = [440, 554, 659, 880];
+  notes.forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.06, ctx.currentTime + i * 0.06);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.06 + 0.3);
+    osc.start(ctx.currentTime + i * 0.06);
+    osc.stop(ctx.currentTime + i * 0.06 + 0.3);
+  });
+}
+
+// ==================== TELEGRAM FORCE JOIN ====================
+function checkTelegramJoin(){
+  playClick();
+  // Check if user has joined (using localStorage as fallback)
+  // In production, you'd use Telegram Bot API to verify
+  const hasJoined = localStorage.getItem('tg_joined_' + TG_CHANNEL_USERNAME);
+
+  if(hasJoined === 'true'){
+    closeTgModal();
+    showToast('✅ Telegram verified!');
+    return;
+  }
+
+  // For now, we trust the user clicked "I Have Joined"
+  // In production, integrate Telegram Bot API for real verification
+  localStorage.setItem('tg_joined_' + TG_CHANNEL_USERNAME, 'true');
+  closeTgModal();
+  showToast('✅ Welcome to SILENT NETWORK!');
+  playSuccess();
+}
+
+function openTgModal(){
+  const modal = document.getElementById('tgModal');
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => modal.classList.add('active'));
+}
+function closeTgModal(){
+  const modal = document.getElementById('tgModal');
+  modal.classList.remove('active');
+  setTimeout(() => modal.style.display = 'none', 500);
+}
+
+function shouldShowTgModal(){
+  const hasJoined = localStorage.getItem('tg_joined_' + TG_CHANNEL_USERNAME);
+  return hasJoined !== 'true';
+}
+
+// ==================== LOADING SCREEN ====================
+const loaderTexts = ['INITIALIZING...','LOADING MODULES...','ESTABLISHING CONNECTION...','DECRYPTING DATA...','ACCESS GRANTED'];
+function runLoader(){
+  const bar = document.getElementById('loaderBar');
+  const text = document.getElementById('loaderText');
+  const loader = document.getElementById('loader');
+  const main = document.getElementById('mainContent');
+  let step = 0;
+  const interval = setInterval(() => {
+    step++;
+    bar.style.width = (step * 20) + '%';
+    if(step < loaderTexts.length) text.textContent = loaderTexts[step];
+    if(step >= 5){
+      clearInterval(interval);
+      setTimeout(() => {
+        loader.classList.add('hidden');
+        main.classList.add('visible');
+        // Check Telegram join after loader
+        if(shouldShowTgModal()){
+          setTimeout(openTgModal, 800);
+        }
+      }, 500);
+    }
+  }, 350);
+}
+
+// ==================== FETCH CONFIGS FROM WORKER ====================
+async function fetchConfigs(){
+  try{
+    const res = await fetch(WORKER_URL + '/api/configs');
+    if(!res.ok) throw new Error('Failed to fetch');
+    const data = await res.json();
+    CONFIGS = data.configs || {};
+
+    // Update UI with fetched configs
+    if(CONFIGS.vless) document.getElementById('vlessText').textContent = CONFIGS.vless;
+    if(CONFIGS.vmess) document.getElementById('vmessText').textContent = CONFIGS.vmess;
+    if(CONFIGS.trojan) document.getElementById('trojanText').textContent = CONFIGS.trojan;
+    if(CONFIGS.ss) document.getElementById('ssText').textContent = CONFIGS.ss;
+
+    // Update Telegram link from server
+    if(data.telegramLink){
+      document.getElementById('tgJoinLink').href = data.telegramLink;
+    }
+  } catch(e){
+    console.error('Config fetch failed:', e);
+    showToast('⚠️ Using offline configs');
+  }
+}
+
+// ==================== PASSWORD MODAL ====================
+function openPassModal(){
+  playClick();
+  const modal = document.getElementById('passModal');
+  modal.style.display = 'flex';
+  requestAnimationFrame(() => {
+    modal.classList.add('active');
+    document.getElementById('passInput').focus();
+  });
+}
+function closePassModal(){
+  const modal = document.getElementById('passModal');
+  modal.classList.remove('active');
+  setTimeout(() => {
+    modal.style.display = 'none';
+    document.getElementById('passInput').value = '';
+    document.getElementById('passError').classList.remove('show');
+  }, 400);
+}
+function checkPass(){
+  const input = document.getElementById('passInput').value;
+  const box = document.getElementById('passBox');
+  const error = document.getElementById('passError');
+
+  if(input === PASSWORD){
+    playSuccess(); playUnlock();
+    isUnlocked = true;
+    box.classList.add('unlock-anim');
+    box.style.borderColor = 'rgba(0,255,100,0.4)';
+    box.style.boxShadow = '0 0 60px rgba(0,255,100,0.2), 0 25px 80px rgba(0,0,0,0.6)';
+
+    setTimeout(() => {
+      closePassModal();
+      document.getElementById('lockedState').style.display = 'none';
+      const cards = document.getElementById('configCards');
+      cards.style.display = 'block';
+      cards.style.opacity = '0';
+      requestAnimationFrame(() => { cards.style.transition = 'opacity 0.8s ease'; cards.style.opacity = '1'; });
+
+      ['vless','vmess','trojan','ss'].forEach(p => {
+        visibleConfigs[p] = true;
+        document.getElementById(p+'Text').classList.add('visible');
+        document.getElementById(p+'Overlay').classList.add('hidden');
+        document.getElementById(p+'Eye').textContent = '🙈';
+        document.getElementById(p+'ShowText').textContent = 'Hide';
+      });
+      showToast('🔓 All configs unlocked!');
+    }, 900);
+  } else {
+    playError();
+    box.classList.add('shake-anim');
+    box.style.borderColor = '#ff3366';
+    box.style.boxShadow = '0 0 40px rgba(255,51,102,0.25)';
+    error.classList.add('show');
+    setTimeout(() => {
+      box.classList.remove('shake-anim');
+      box.style.borderColor = 'rgba(0,240,255,0.2)';
+      box.style.boxShadow = '0 0 60px rgba(0,240,255,0.08), 0 25px 80px rgba(0,0,0,0.6)';
+    }, 550);
+  }
+}
+document.getElementById('passInput').addEventListener('keypress', e => { if(e.key === 'Enter') checkPass(); });
+document.getElementById('passModal').addEventListener('click', e => { if(e.target.id === 'passModal') closePassModal(); });
+
+// ==================== CONFIG ACTIONS ====================
+function getAllConfigs(){
+  playClick();
+  if(!isUnlocked){ openPassModal(); return; }
+}
+function toggleShow(protocol){
+  playClick();
+  if(!isUnlocked){ openPassModal(); return; }
+  visibleConfigs[protocol] = !visibleConfigs[protocol];
+  const text = document.getElementById(protocol+'Text');
+  const overlay = document.getElementById(protocol+'Overlay');
+  const eye = document.getElementById(protocol+'Eye');
+  const showText = document.getElementById(protocol+'ShowText');
+
+  if(visibleConfigs[protocol]){
+    text.classList.add('visible'); overlay.classList.add('hidden');
+    eye.textContent = '🙈'; showText.textContent = 'Hide';
+  } else {
+    text.classList.remove('visible'); overlay.classList.remove('hidden');
+    eye.textContent = '👁️'; showText.textContent = 'Show';
+  }
+}
+function copyConfig(protocol){
+  playClick();
+  if(!isUnlocked){ openPassModal(); return; }
+  const text = CONFIGS[protocol] || document.getElementById(protocol+'Text').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    showToast('📋 ' + protocol.toUpperCase() + ' copied!');
+  }).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('📋 ' + protocol.toUpperCase() + ' copied!');
+  });
+}
+function showToast(msg){
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+// ==================== CANVAS ANIMATIONS ====================
+const bgCanvas = document.getElementById('bgCanvas');
+const bgCtx = bgCanvas.getContext('2d');
+const pCanvas = document.getElementById('particleCanvas');
+const pCtx = pCanvas.getContext('2d');
+let W, H, particles = [], lightLines = [];
+
+function resize(){
+  W = bgCanvas.width = pCanvas.width = window.innerWidth;
+  H = bgCanvas.height = pCanvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+for(let i=0;i<25;i++){
+  lightLines.push({
+    x: Math.random()*W, y: Math.random()*H,
+    speed: 0.3 + Math.random()*0.6,
+    length: 60 + Math.random()*200,
+    width: 0.5 + Math.random()*1.5,
+    color: ['#00f0ff','#ff00ff','#00ff64','#ffc800'][Math.floor(Math.random()*4)]
+  });
+}
+
+for(let i=0;i<100;i++){
+  particles.push({
+    x: Math.random()*W, y: Math.random()*H,
+    vx: (Math.random()-0.5)*0.6, vy: (Math.random()-0.5)*0.6,
+    size: Math.random()*2.5 + 0.3,
+    alpha: Math.random()*0.4 + 0.15,
+    color: ['#00f0ff','#ff00ff','#00ff64','#ffc800','#ffffff'][Math.floor(Math.random()*5)],
+    pulse: Math.random()*Math.PI*2
+  });
+}
+
+let t = 0;
+function animate(){
+  t += 0.004;
+  bgCtx.fillStyle = '#03030a';
+  bgCtx.fillRect(0,0,W,H);
+
+  const rg = bgCtx.createRadialGradient(
+    W/2 + Math.sin(t)*150, H/2 + Math.cos(t*0.7)*80, 0,
+    W/2, H/2, Math.max(W,H)*0.7
+  );
+  rg.addColorStop(0, 'rgba(0,30,60,0.5)');
+  rg.addColorStop(0.4, 'rgba(15,0,40,0.3)');
+  rg.addColorStop(1, 'rgba(3,3,10,0)');
+  bgCtx.fillStyle = rg;
+  bgCtx.fillRect(0,0,W,H);
+
+  bgCtx.strokeStyle = 'rgba(0,240,255,0.025)';
+  bgCtx.lineWidth = 1;
+  const gs = 60;
+  const off = (t*15) % gs;
+  for(let x=off;x<W;x+=gs){bgCtx.beginPath();bgCtx.moveTo(x,0);bgCtx.lineTo(x,H);bgCtx.stroke();}
+  for(let y=off;y<H;y+=gs){bgCtx.beginPath();bgCtx.moveTo(0,y);bgCtx.lineTo(W,y);bgCtx.stroke();}
+
+  lightLines.forEach(line => {
+    line.y += line.speed;
+    if(line.y > H + line.length){ line.y = -line.length; line.x = Math.random()*W; }
+    const lg = bgCtx.createLinearGradient(line.x, line.y, line.x, line.y + line.length);
+    lg.addColorStop(0, 'rgba(0,0,0,0)');
+    lg.addColorStop(0.5, line.color.replace(')', ',0.08)').replace('rgb','rgba'));
+    lg.addColorStop(1, 'rgba(0,0,0,0)');
+    bgCtx.strokeStyle = lg;
+    bgCtx.lineWidth = line.width;
+    bgCtx.beginPath();bgCtx.moveTo(line.x, line.y);bgCtx.lineTo(line.x, line.y + line.length);bgCtx.stroke();
+  });
+
+  pCtx.clearRect(0,0,W,H);
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    p.pulse += 0.03;
+    if(p.x < -10) p.x = W+10; if(p.x > W+10) p.x = -10;
+    if(p.y < -10) p.y = H+10; if(p.y > H+10) p.y = -10;
+
+    const pulseAlpha = p.alpha * (0.7 + 0.3*Math.sin(p.pulse));
+    pCtx.beginPath();
+    pCtx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+    pCtx.fillStyle = p.color;
+    pCtx.globalAlpha = pulseAlpha;
+    pCtx.fill();
+
+    pCtx.beginPath();
+    pCtx.arc(p.x, p.y, p.size*3, 0, Math.PI*2);
+    const pg = pCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size*3);
+    pg.addColorStop(0, p.color.replace(')', `,${pulseAlpha*0.3})`).replace('rgb','rgba'));
+    pg.addColorStop(1, 'rgba(0,0,0,0)');
+    pCtx.fillStyle = pg;
+    pCtx.fill();
+  });
+  pCtx.globalAlpha = 1;
+
+  for(let i=0;i<particles.length;i++){
+    for(let j=i+1;j<particles.length;j++){
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if(dist < 140){
+        pCtx.beginPath();
+        pCtx.moveTo(particles[i].x, particles[i].y);
+        pCtx.lineTo(particles[j].x, particles[j].y);
+        pCtx.strokeStyle = `rgba(0,240,255,${0.06 * (1 - dist/140)})`;
+        pCtx.lineWidth = 0.5;
+        pCtx.stroke();
+      }
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+// Start everything
+animate();
+fetchConfigs(); // Fetch configs from Worker
+runLoader();
+</script>
+</body>
+</html>
