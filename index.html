@@ -805,7 +805,7 @@ body{
 // ═══════════════════════════════════════════════════════════════
 
 // ==================== 🔴 CONFIGURE THESE ====================
-const API_URL = 'https://hydrax-image-host.pages.dev/api/configs'; // ← Your Worker URL
+const WORKER_URL = 'https://hydrax-image-host.pages.dev'; // ← Your Worker URL
 const TELEGRAM_LINK = 'https://t.me/SILENT_NETWORK_OPP'; // ← Your Telegram Channel
 const TG_CHANNEL_USERNAME = 'SILENT_NETWORK_OPP'; // ← Channel username without @
 const PASSWORD = 'silentbhaiop'; // ← Config unlock password
@@ -1188,8 +1188,8 @@ function animate(){
 
 // Start everything
 animate();
-fetchConfigs(); // Fetch configs from Worker
 runLoader();
+document.addEventListener('DOMContentLoaded', fetchConfigs);
 </script>
 </body>
 </html>
